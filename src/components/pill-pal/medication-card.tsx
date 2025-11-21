@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -106,19 +106,11 @@ export function MedicationCard({ medication }: MedicationCardProps) {
       reminderDate.setDate(reminderDate.getDate() + 1);
       timeToReminder = reminderDate.getTime() - now.getTime();
     }
-    
-    const daysRemaining = differenceInDays(endDate, new Date());
-    const isRefillNeeded = daysRemaining <= 3;
 
     setTimeout(() => {
       toast({
         title: 'Medication Reminder',
         description: `Time to take your ${medication.medicationName}.`,
-        action: isRefillNeeded ? (
-          <Button onClick={findPharmacies} className="mt-2 w-full">
-            <MapPin className="mr-2 h-4 w-4" /> Find Pharmacy for Refill
-          </Button>
-        ) : undefined,
       });
     }, timeToReminder);
 
@@ -129,6 +121,9 @@ export function MedicationCard({ medication }: MedicationCardProps) {
   };
   
   const weekDates = datesByWeek[currentWeek] || [];
+  const daysRemaining = differenceInDays(endDate, new Date());
+  const isRefillNeeded = daysRemaining <= 3 && daysRemaining >= 0;
+
 
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow flex flex-col">
@@ -208,6 +203,18 @@ export function MedicationCard({ medication }: MedicationCardProps) {
           </div>
         </div>
       </CardContent>
+      <CardFooter className="flex-col items-stretch gap-2 pt-4">
+        {isRefillNeeded && (
+            <div className="text-center p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800/50">
+                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    You have {daysRemaining + 1} day{daysRemaining > 0 ? 's' : ''} of medication left. Time for a refill!
+                </p>
+            </div>
+        )}
+        <Button onClick={findPharmacies} variant="outline" className="w-full">
+            <MapPin className="mr-2 h-4 w-4" /> Find Nearby Pharmacy
+        </Button>
+      </CardFooter>
     </Card>
   );
 }
