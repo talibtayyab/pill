@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { BellRing, Pill, Stethoscope, Clock, MapPin, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import type { MedicationDetail } from '@/ai/flows/extract-medication-details';
-import { addDays, format, startOfDay } from 'date-fns';
+import { addDays, format, startOfDay, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 
@@ -27,14 +27,15 @@ export function MedicationCard({ medication }: MedicationCardProps) {
   const [reminderTime, setReminderTime] = useState('');
   const [currentWeek, setCurrentWeek] = useState(0);
 
-  const { startDate, totalWeeks, datesByWeek } = useMemo(() => {
+  const { startDate, totalWeeks, datesByWeek, endDate } = useMemo(() => {
     const start = startOfDay(new Date());
     const duration = medication.duration || 7;
+    const end = addDays(start, duration - 1); // -1 because duration includes start day
     const weeks = Math.ceil(duration / 7);
     const dates = Array.from({ length: weeks }, (_, weekIndex) =>
       Array.from({ length: 7 }, (__, dayIndex) => addDays(start, weekIndex * 7 + dayIndex))
     );
-    return { startDate: start, totalWeeks: weeks, datesByWeek: dates };
+    return { startDate: start, totalWeeks: weeks, datesByWeek: dates, endDate: end };
   }, [medication.duration]);
 
   useEffect(() => {
@@ -60,6 +61,30 @@ export function MedicationCard({ medication }: MedicationCardProps) {
   const takenDoses = Object.values(intakeLog).flat().filter(Boolean).length;
   const progress = totalDoses > 0 ? (takenDoses / totalDoses) * 100 : 0;
 
+  const findPharmacies = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const url = `https://www.google.com/maps/search/pharmacies/@${latitude},${longitude},15z`;
+          window.open(url, '_blank');
+        },
+        () => {
+          toast({
+            variant: 'destructive',
+            title: 'Location Error',
+            description: 'Could not get your location. Please enable location services.',
+          });
+        }
+      );
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Geolocation is not supported by your browser.',
+      });
+    }
+  };
 
   const handleReminder = () => {
     if (!reminderTime) {
@@ -82,10 +107,18 @@ export function MedicationCard({ medication }: MedicationCardProps) {
       timeToReminder = reminderDate.getTime() - now.getTime();
     }
     
+    const daysRemaining = differenceInDays(endDate, new Date());
+    const isRefillNeeded = daysRemaining <= 3;
+
     setTimeout(() => {
       toast({
         title: 'Medication Reminder',
         description: `Time to take your ${medication.medicationName}.`,
+        action: isRefillNeeded ? (
+          <Button onClick={findPharmacies} className="mt-2 w-full">
+            <MapPin className="mr-2 h-4 w-4" /> Find Pharmacy for Refill
+          </Button>
+        ) : undefined,
       });
     }, timeToReminder);
 
@@ -93,31 +126,6 @@ export function MedicationCard({ medication }: MedicationCardProps) {
       title: 'Reminder Set!',
       description: `We'll remind you to take ${medication.medicationName} at ${reminderTime}.`,
     });
-  };
-
-  const findPharmacies = () => {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            const url = `https://www.google.com/maps/search/pharmacies/@${latitude},${longitude},15z`;
-            window.open(url, '_blank');
-          },
-          () => {
-            toast({
-              variant: 'destructive',
-              title: 'Location Error',
-              description: 'Could not get your location. Please enable location services.',
-            });
-          }
-        );
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Geolocation is not supported by your browser.',
-        });
-      }
   };
   
   const weekDates = datesByWeek[currentWeek] || [];
@@ -200,14 +208,6 @@ export function MedicationCard({ medication }: MedicationCardProps) {
           </div>
         </div>
       </CardContent>
-      {progress >= 100 && (
-        <CardFooter>
-          <Button onClick={findPharmacies} className="w-full">
-            <MapPin className="mr-2 h-4 w-4" />
-            Find Nearby Pharmacies
-          </Button>
-        </CardFooter>
-      )}
     </Card>
   );
 }
