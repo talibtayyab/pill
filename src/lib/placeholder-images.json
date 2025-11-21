@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "prescription-upload-bg",
+      "description": "A stylised graphic of a medical prescription paper",
+      "imageUrl": "https://images.unsplash.com/photo-1630094539465-9838f369f766?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtZWRpY2FsJTIwcHJlc2NyaXB0aW9ufGVufDB8fHx8MTc2MzcxMjE3OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "medical prescription"
+    }
+  ]
 }
