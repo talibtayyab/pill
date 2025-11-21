@@ -59,7 +59,10 @@ export function MedicationCard({ medication }: MedicationCardProps) {
   
   const totalDoses = medication.duration * medication.frequency;
   const takenDoses = Object.values(intakeLog).flat().filter(Boolean).length;
+  const remainingDoses = totalDoses - takenDoses;
   const progress = totalDoses > 0 ? (takenDoses / totalDoses) * 100 : 0;
+  const isRefillNeeded = remainingDoses <= 2;
+
 
   const findPharmacies = () => {
     if (navigator.geolocation) {
@@ -121,8 +124,6 @@ export function MedicationCard({ medication }: MedicationCardProps) {
   };
   
   const weekDates = datesByWeek[currentWeek] || [];
-  const daysRemaining = differenceInDays(endDate, new Date());
-  const isRefillNeeded = daysRemaining <= 3 && daysRemaining >= 0;
 
 
   return (
@@ -205,15 +206,10 @@ export function MedicationCard({ medication }: MedicationCardProps) {
       </CardContent>
       <CardFooter className="flex-col items-stretch gap-2 pt-4">
         {isRefillNeeded && (
-            <div className="text-center p-2 rounded-md bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800/50">
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                    You have {daysRemaining + 1} day{daysRemaining > 0 ? 's' : ''} of medication left. Time for a refill!
-                </p>
-            </div>
+            <Button onClick={findPharmacies} variant="outline" className="w-full bg-yellow-100 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800/50 hover:bg-yellow-200 dark:hover:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 hover:text-yellow-900 dark:hover:text-yellow-100">
+                <MapPin className="mr-2 h-4 w-4" /> Time to refill {medication.medicationName}, find nearby pharmacy
+            </Button>
         )}
-        <Button onClick={findPharmacies} variant="outline" className="w-full">
-            <MapPin className="mr-2 h-4 w-4" /> Find Nearby Pharmacy
-        </Button>
       </CardFooter>
     </Card>
   );
