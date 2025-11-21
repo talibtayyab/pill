@@ -8,10 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { BellRing, Pill, Stethoscope, Clock, MapPin } from 'lucide-react';
-import type { ExtractMedicationDetailsOutput } from '@/ai/flows/extract-medication-details';
+import type { MedicationDetail } from '@/ai/flows/extract-medication-details';
 
 interface MedicationCardProps {
-  medication: ExtractMedicationDetailsOutput;
+  medication: MedicationDetail;
 }
 
 export function MedicationCard({ medication }: MedicationCardProps) {
@@ -19,6 +19,13 @@ export function MedicationCard({ medication }: MedicationCardProps) {
   const [intake, setIntake] = useState({ morning: false, noon: false, night: false });
   const [allTaken, setAllTaken] = useState(false);
   const [reminderTime, setReminderTime] = useState('');
+
+  useEffect(() => {
+    // Reset state when medication changes
+    setIntake({ morning: false, noon: false, night: false });
+    setAllTaken(false);
+    setReminderTime('');
+  }, [medication]);
 
   useEffect(() => {
     const allChecked = Object.values(intake).every(Boolean);

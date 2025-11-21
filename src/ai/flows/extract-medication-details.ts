@@ -15,17 +15,22 @@ const ExtractMedicationDetailsInputSchema = z.object({
   prescriptionImage: z
     .string()
     .describe(
-      'A photo of a prescription, as a data URI that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.' 
+      'A photo of a prescription, as a data URI that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.'
     ),
 });
 export type ExtractMedicationDetailsInput = z.infer<typeof ExtractMedicationDetailsInputSchema>;
 
-const ExtractMedicationDetailsOutputSchema = z.object({
+const MedicationDetailSchema = z.object({
   medicationName: z.string().describe('The name of the medication.'),
   dosage: z.string().describe('The dosage of the medication.'),
   schedule: z.string().describe('The schedule of the medication.'),
 });
+
+const ExtractMedicationDetailsOutputSchema = z.object({
+  medications: z.array(MedicationDetailSchema).describe("An array of all medications found on the prescription.")
+});
 export type ExtractMedicationDetailsOutput = z.infer<typeof ExtractMedicationDetailsOutputSchema>;
+export type MedicationDetail = z.infer<typeof MedicationDetailSchema>;
 
 export async function extractMedicationDetails(
   input: ExtractMedicationDetailsInput
@@ -39,19 +44,14 @@ const extractMedicationDetailsPrompt = ai.definePrompt({
   output: {schema: ExtractMedicationDetailsOutputSchema},
   prompt: `You are an AI assistant that extracts medication details from a prescription image.
 
-  Analyze the prescription image and extract the following information:
+  Analyze the prescription image and extract the following information for all medications present:
   - Medication Name: The name of the prescribed medication.
   - Dosage: The prescribed dosage of the medication.
   - Schedule: The schedule for taking the medication (e.g., once daily, twice daily, etc.).
 
   Prescription Image: {{media url=prescriptionImage}}
 
-  Provide the extracted information in the following format:
-  {
-    "medicationName": "[Medication Name]",
-    "dosage": "[Dosage]",
-    "schedule": "[Schedule]"
-  }`,
+  Provide the extracted information in the following JSON format, ensuring all medications are included in the 'medications' array.`,
 });
 
 const extractMedicationDetailsFlow = ai.defineFlow(

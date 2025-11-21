@@ -8,14 +8,14 @@ import { ResultsDisplay } from '@/components/pill-pal/results-display';
 import { Chatbot } from '@/components/pill-pal/chatbot';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Loader2 } from 'lucide-react';
+import { Terminal, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
-import { extractMedicationDetails, type ExtractMedicationDetailsOutput } from '@/ai/flows/extract-medication-details';
+import { extractMedicationDetails, type MedicationDetail } from '@/ai/flows/extract-medication-details';
 import { getDietarySuggestions, type GetDietarySuggestionsOutput } from '@/ai/flows/get-dietary-suggestions';
 import { generateHealthTips, type GenerateHealthTipsOutput } from '@/ai/flows/generate-health-tips';
 
 export type AnalysisResult = {
-  medication: ExtractMedicationDetailsOutput;
+  medication: MedicationDetail;
   dietarySuggestions: GetDietarySuggestionsOutput;
   healthTips: GenerateHealthTipsOutput;
 };
@@ -25,7 +25,8 @@ export default function Home() {
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<AnalysisResult | null>(null);
+  const [results, setResults] = useState<AnalysisResult[] | null>(null);
+  const [currentMedicationIndex, setCurrentMedicationIndex] = useState(0);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -51,6 +52,7 @@ export default function Home() {
     reader.readAsDataURL(file);
     setResults(null);
     setError(null);
+    setCurrentMedicationIndex(0);
   }
 
   const handleAnalyze = async () => {
@@ -62,20 +64,31 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setResults(null);
+    setCurrentMedicationIndex(0);
 
     try {
-      const medicationDetails = await extractMedicationDetails({ prescriptionImage: preview });
+      const { medications } = await extractMedicationDetails({ prescriptionImage: preview });
       
-      const [dietarySuggestions, healthTips] = await Promise.all([
-        getDietarySuggestions({ medicationName: medicationDetails.medicationName }),
-        generateHealthTips({ medicationNames: [medicationDetails.medicationName] })
-      ]);
-
-      setResults({
-        medication: medicationDetails,
-        dietarySuggestions,
-        healthTips,
+      if (!medications || medications.length === 0) {
+        setError("No medications found on the prescription. Please try a clearer image.");
+        setLoading(false);
+        return;
+      }
+      
+      const analysisPromises = medications.map(async (medication) => {
+        const [dietarySuggestions, healthTips] = await Promise.all([
+          getDietarySuggestions({ medicationName: medication.medicationName }),
+          generateHealthTips({ medicationNames: [medication.medicationName] })
+        ]);
+        return {
+          medication,
+          dietarySuggestions,
+          healthTips,
+        };
       });
+
+      const analysisResults = await Promise.all(analysisPromises);
+      setResults(analysisResults);
 
     } catch (e) {
       console.error(e);
@@ -91,7 +104,19 @@ export default function Home() {
     setResults(null);
     setError(null);
     setLoading(false);
+    setCurrentMedicationIndex(0);
   }
+  
+  const handlePrevMedication = () => {
+      setCurrentMedicationIndex(prev => (prev > 0 ? prev - 1 : prev));
+  }
+
+  const handleNextMedication = () => {
+      if (results) {
+        setCurrentMedicationIndex(prev => (prev < results.length - 1 ? prev + 1 : prev));
+      }
+  }
+
 
   return (
     <div className="bg-background min-h-screen">
@@ -123,7 +148,21 @@ export default function Home() {
             )}
           </div>
           
-          <ResultsDisplay loading={loading} results={results} />
+          {results && results.length > 1 && (
+            <div className="flex items-center justify-center gap-4">
+              <Button onClick={handlePrevMedication} disabled={currentMedicationIndex === 0} variant="outline">
+                <ChevronLeft className="h-4 w-4 mr-2" /> Previous
+              </Button>
+              <span className="text-sm font-medium text-muted-foreground">
+                Medication {currentMedicationIndex + 1} of {results.length}
+              </span>
+              <Button onClick={handleNextMedication} disabled={currentMedicationIndex === results.length - 1} variant="outline">
+                Next <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          )}
+          
+          <ResultsDisplay loading={loading} results={results ? results[currentMedicationIndex] : null} />
         </div>
       </main>
       <Chatbot />
