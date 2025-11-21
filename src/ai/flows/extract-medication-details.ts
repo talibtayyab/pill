@@ -23,7 +23,9 @@ export type ExtractMedicationDetailsInput = z.infer<typeof ExtractMedicationDeta
 const MedicationDetailSchema = z.object({
   medicationName: z.string().describe('The name of the medication.'),
   dosage: z.string().describe('The dosage of the medication.'),
-  schedule: z.string().describe('The schedule of the medication.'),
+  schedule: z.string().describe('The schedule for taking the medication (e.g., "once daily", "3 times a day for 7 days").'),
+  frequency: z.number().describe('The number of times per day the medication should be taken.'),
+  duration: z.number().describe('The number of days the medication should be taken for.'),
 });
 
 const ExtractMedicationDetailsOutputSchema = z.object({
@@ -47,7 +49,9 @@ const extractMedicationDetailsPrompt = ai.definePrompt({
   Analyze the prescription image and extract the following information for all medications present:
   - Medication Name: The name of the prescribed medication.
   - Dosage: The prescribed dosage of the medication.
-  - Schedule: The schedule for taking the medication (e.g., once daily, twice daily, etc.).
+  - Schedule: The schedule for taking the medication (e.g., once daily, twice daily, 3 times a day for 7 days).
+  - Frequency: The number of times per day the medication should be taken.
+  - Duration: The total number of days the medication should be taken for. If duration is in weeks or months, convert it to days. For example, '1 week' is 7 days, '1 month' is 30 days. If no duration is specified, default to 7 days.
 
   Prescription Image: {{media url=prescriptionImage}}
 
